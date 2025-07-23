@@ -1,0 +1,65 @@
+fileVersion: 1
+id: "35"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: REFERENCE SATELLITE V1'
+    short: 'REF_SATV1'
+    plural: 'DATAVAULT BY SCALEFREE: REFERENCE SATELLITES V1'
+    tagColor: '#FFAC1C'
+
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        isRequired: true
+        enableIf: 'true'
+        default: view
+        options:
+        - view
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+    - groupName: Data Vault
+      items:
+      - displayName: Reference Keys
+        type: columnSelector
+        attributeName: is_ref_key
+        isRequired: true    
+
+    systemColumns:
+    - displayName: "LEDTS"
+      transform: |-
+        COALESCE(LEAD(TRY_SUBTRACT(`{{ datavault4coalesce.config.ldts_alias }}`, INTERVAL 1 MICROSECOND)) 
+        OVER (PARTITION BY `{{ get_value_by_column_attribute("is_ref_key") }}` 
+        ORDER BY `{{ datavault4coalesce.config.ldts_alias }}`), {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.end_of_all_times) }})
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: is_system_ledts
+    - displayName: "IS_CURRENT"
+      transform: |-
+        CASE 
+          WHEN 
+            LEAD(TRY_SUBTRACT(`{{ datavault4coalesce.config.ldts_alias }}`, INTERVAL 1 MICROSECOND)) 
+            OVER (PARTITION BY `{{ get_value_by_column_attribute("is_ref_key") }}`
+            ORDER BY `{{ datavault4coalesce.config.ldts_alias }}`) IS NULL 
+          THEN TRUE 
+          ELSE FALSE 
+        END
+      dataType: BOOLEAN
+      placement: end
+      attributeName: is_system_current_col
+name: "Datavault by Scalefree: Reference Satellite v1"
+type: NodeType

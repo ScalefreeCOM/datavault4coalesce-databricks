@@ -1,0 +1,54 @@
+fileVersion: 1
+id: "7"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: LINK'
+    short: 'LINK'
+    tagColor: 'Red'
+    plural: 'DATAVAULT BY SCALEFREE: LINKS'
+
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        isRequired: true
+        enableIf: 'false'
+        default: table
+        options:
+        - table
+
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+        
+      - type: multisourceToggle
+      
+    - groupName: Data Vault
+      items:
+      - displayName: Link Hashkey Column
+        type: columnSelector
+        attributeName: is_Link_hk
+        isRequired: true 
+
+      - displayName: Disable High-Water-Mark?
+        type: toggleButton
+        isRequired: false
+        enableIf: 'false'
+        attributeName: disable_hwm   
+        default: true    
+name: "Datavault by Scalefree: Link"
+type: NodeType

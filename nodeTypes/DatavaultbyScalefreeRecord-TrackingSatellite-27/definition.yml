@@ -1,0 +1,48 @@
+fileVersion: 1
+id: "27"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: RECORD TRACKING SATELLITE'
+    short: 'RTS'
+    plural: 'DATAVAULT BY SCALEFREE: RECORD TRACKING SATELLITES'
+    tagColor: 'gold'
+
+    joinTemplate: |-
+      FROM {{ ref_raw(sources[0].dependencies[0].node.location.name,sources[0].dependencies[0].node.name) }} `{{ sources[0].dependencies[0].node.name }}`
+      WHERE `{{ sources[0].dependencies[0].node.name }}`.`{{ datavault4coalesce.config.ldts_alias }}` > 
+      (SELECT COALESCE(MAX(`{{ datavault4coalesce.config.ldts_alias }}`),{{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }})
+      FROM {{ this }}
+      WHERE `{{ datavault4coalesce.config.ldts_alias }}` != {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.end_of_all_times) }})
+
+    config:
+    - groupName: Data Vault
+      items:
+      - displayName: Hashkey Column
+        type: columnDropdownSelector
+        attributeName: is_hk
+        isRequired: false
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+    systemColumns:
+      - displayName: "STG"
+        transform: "'{{ sources[0].dependencies[0].node.location.name }}.{{ sources[0].dependencies[0].node.name }}'"
+        dataType: STRING
+        placement: end
+        attributeName: is_stg    
+        description: "The Stage (STG) references the exact source of this data, specific for record tracking."
+name: "Datavault by Scalefree: Record-Tracking Satellite"
+type: NodeType

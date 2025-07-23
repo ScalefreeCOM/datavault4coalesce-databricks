@@ -1,0 +1,62 @@
+fileVersion: 1
+id: Stage
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |
+    capitalized: Stage
+    short: STG
+    plural: Stages
+    tagColor: '#2EB67D'
+
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        default: table
+        options:
+        - table
+        - view
+        isRequired: true
+
+      - type: multisourceToggle
+        enableIf: "{% if node.materializationType == 'table' %} true {% else %} false {% endif %}" 
+
+      - type: overrideSQLToggle
+        enableIf: "{% if node.materializationType == 'view' %} true {% else %} false {% endif %}"
+        
+      - displayName: Multi Source Strategy
+        attributeName: insertStrategy
+        type: dropdownSelector
+        default: INSERT
+        options:
+        - "INSERT"
+        - "UNION"
+        - "UNION ALL"
+        isRequired: true
+        enableIf: "{% if node.isMultisource %} true {% else %} false {% endif %}"
+
+      - displayName: Truncate Before
+        attributeName: truncateBefore
+        type: toggleButton
+        default: true
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+        
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        syntax: sql
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        syntax: sql
+        isRequired: false
+name: Stage
+type: NodeType

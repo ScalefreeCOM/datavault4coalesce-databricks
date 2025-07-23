@@ -1,0 +1,45 @@
+fileVersion: 1
+id: "24"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: NON-HISTORIZED SATELLITE'
+    short: 'NHSAT'
+    plural: 'DATAVAULT BY SCALEFREE: NON-HISTORIZED SATELLITES'
+    tagColor: '#FFFF8F'
+
+    config:
+    - groupName: Data Vault
+      items:
+      - displayName: Hashkey Column
+        type: columnSelector
+        attributeName: is_hk
+        isRequired: true
+
+      - displayName: Source is Single Batch?
+        type: toggleButton
+        isRequired: true
+        attributeName: source_is_single_batch
+        default: false
+        
+      - displayName: Disable High-Water-Mark?
+        type: toggleButton
+        isRequired: true
+        attributeName: disable_hwm   
+        default: false
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+name: "Datavault by Scalefree: Non-Historized Satellite"
+type: NodeType

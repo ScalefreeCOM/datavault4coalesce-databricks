@@ -1,0 +1,55 @@
+fileVersion: 1
+id: "33"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: REFERENCE HUB'
+    short: 'REF_HUB'
+    tagColor: purple
+    plural: 'DATAVAULT BY SCALEFREE: REFERENCE HUBS'
+
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        isRequired: true
+        enableIf: 'true'
+        options: 
+        - table
+        default: table
+     
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+
+      - type: multisourceToggle
+
+    - groupName: Data Vault
+      items:
+
+      - displayName: Reference Keys
+        type: columnSelector
+        attributeName: is_ref_key
+        isRequired: true
+        enableIf: 'true'
+        
+      - displayName: Hub LoadDateTimestamp Column
+        enableIf: 'false'
+        type: columnSelector
+        attributeName: is_ref_ldts
+        isRequired: false
+name: "Datavault by Scalefree: Reference Hub"
+type: NodeType

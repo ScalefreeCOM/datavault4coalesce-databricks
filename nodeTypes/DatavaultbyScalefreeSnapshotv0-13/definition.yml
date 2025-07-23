@@ -1,0 +1,120 @@
+fileVersion: 1
+id: "13"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: SNAPSHOT V0'
+    short: 'SNAPSHOTV0'
+    plural: 'DATAVAULT BY SCALEFREE: SNAPSHOTS V0'
+    tagColor: '#1E8449'
+
+    config:
+    - groupName: Data Vault
+      items:
+      - displayName: Snapshot Start Date (yyyy-mm-dd)
+        type: textBox
+        attributeName: input_snapshot_start_date
+        isRequired: true
+        default: "2020-01-01"
+
+      - displayName: Snapshot End Date (yyyy-mm-dd)
+        type: textBox
+        attributeName: input_snapshot_end_date
+        isRequired: true
+        default: "2025-12-31"
+
+      - displayName: Daily Snapshot Time (hh:mm:ss)
+        type: textBox
+        attributeName: input_daily_snapshot_time
+        isRequired: true
+        default: "07:00:00"
+
+      - type: materializationSelector
+        default: table
+        options:
+        - table
+        isRequired: true
+        enableIf: "false" 
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true    
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+
+    systemColumns:
+    - displayName: "SDTS"
+      transform: ""
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: system_sdts
+
+    - displayName: "FORCE_ACTIVE"
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_force_active
+
+    - displayName: "REPLACEMENT_SDTS"
+      transform: ""
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: system_replacement_sdts
+
+    - displayName: "CAPTION"
+      transform: ""
+      dataType: STRING
+      placement: end
+      attributeName: system_caption
+
+    - displayName: "IS_HOURLY"
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_hourly
+
+    - displayName: "IS_DAILY"
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_daily
+
+    - displayName: "IS_BEGINNING_OF_WEEK"
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_beginning_of_week
+
+    - displayName: "IS_BEGINNING_OF_MONTH"
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_beginning_of_month
+
+    - displayName: "IS_BEGINNING_OF_QUARTER"
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_beginning_of_quarter
+
+    - displayName: "IS_BEGINNING_OF_YEAR"
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_beginning_of_year
+name: "Datavault by Scalefree: Snapshot v0"
+type: NodeType

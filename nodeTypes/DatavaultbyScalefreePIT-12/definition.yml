@@ -1,0 +1,31 @@
+fileVersion: 1
+id: "12"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: PIT'
+    short: 'PIT'
+    tagColor: '#C0C0C0'
+    plural: 'DATAVAULT BY SCALEFREE: PITS'
+
+    config:
+    - groupName: Data Vault
+      items:
+      - displayName: Dimension Key Column
+        type: columnSelector
+        attributeName: is_dimension_key
+        isRequired: true
+
+      - displayName: Clean Up PIT
+        type: toggleButton
+        attributeName: cleanup_pit
+        default: true
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+name: "Datavault by Scalefree: PIT"
+type: NodeType

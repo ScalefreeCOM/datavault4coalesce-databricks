@@ -1,0 +1,99 @@
+{{ stage('Run Snapshot v0') }}
+{% for test in node.tests if config.testsEnabled %}
+    {% if test.runOrder == 'Before' %}
+        {{ test_stage(test.name, test.continueOnFailure) }}
+        {{ test.templateString }}
+    {% endif %}
+{% endfor %}
+
+{% if config.preSQL %}
+    {{ stage('Pre-SQL') }}
+    {{ config.preSQL }}
+{% endif %}
+
+{{ stage('Insert New Rows') }}
+
+{%- set timestamp_format = datavault4coalesce.config.timestamp_format -%}
+{%- set start_date = config.input_snapshot_start_date -%}
+{%- set end_date = config.input_snapshot_end_date -%}
+{%- set daily_snapshot_time = config.input_daily_snapshot_time -%}
+
+INSERT INTO {{ ref_no_link(node.location.name, node.name) }}
+
+WITH 
+date_array as(
+    SELECT
+        explode(SEQUENCE(TO_TIMESTAMP("{{ config.input_snapshot_start_date }} {{ config.input_daily_snapshot_time }}"), TO_TIMESTAMP(CURRENT_DATE() + 1), INTERVAL 1 DAY)) AS sdts
+)
+
+, initial_timestamps AS(
+    SELECT *
+    FROM date_array 
+    WHERE sdts <= CURRENT_TIMESTAMP
+    AND sdts > (SELECT coalesce(MAX(sdts), {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }}) FROM {{ ref_no_link(node.location.name, node.name) }})
+
+)
+
+, enriched_timestamps AS (
+    SELECT 
+        sdts as {{ datavault4coalesce.config.sdts_alias }},
+        TRUE as force_active,
+        sdts AS replacement_sdts,
+        CONCAT("Snapshot ", DATE(sdts)) as caption,
+        CASE
+            WHEN EXTRACT(MINUTE FROM sdts) = 0 AND EXTRACT(SECOND FROM sdts) = 0 THEN TRUE
+            ELSE FALSE
+        END as is_hourly,
+        CASE
+            WHEN EXTRACT(MINUTE FROM sdts) = 0 AND EXTRACT(SECOND FROM sdts) = 0 AND EXTRACT(HOUR FROM sdts) = 0 THEN TRUE
+            ELSE FALSE
+        END as is_daily,
+        CASE
+            WHEN EXTRACT(DAYOFWEEK FROM sdts) = 2 THEN TRUE
+            ELSE FALSE
+        END AS is_beginning_of_week,
+        CASE
+            WHEN EXTRACT(DAY FROM sdts) = 1 THEN TRUE
+            ELSE FALSE
+        END AS is_beginning_of_month,
+        CASE
+            WHEN EXTRACT(DAY FROM sdts) = 1 AND EXTRACT(MONTH from sdts) IN (1,4,7,10) THEN TRUE
+            ELSE FALSE
+        END AS is_beginning_of_quarter,  
+        CASE
+            WHEN EXTRACT(DAY FROM sdts) = 1 AND EXTRACT(MONTH FROM sdts) = 1 THEN TRUE
+            ELSE FALSE
+        END AS is_beginning_of_year
+    FROM initial_timestamps
+)
+
+SELECT 
+{% for col in columns %}
+    {{ col.name }}
+    {% if not loop.last %}, {% endif %}
+{% endfor %}
+FROM enriched_timestamps
+
+
+{%- if node.description | length > 0 %} COMMENT = '{{ node.description }}'{% endif %}
+
+{% if config.testsEnabled %}
+{% for test in node.tests %}
+    {% if test.runOrder == 'After' %}
+    {{ test_stage(test.name, test.continueOnFailure) }}
+    {{ test.templateString }}
+        {% endif %}
+{% endfor %}
+
+{% for column in columns %}
+    {% for test in column.tests %}
+    {{ test_stage(column.name + ": " + test.name) }}
+    {{ test.templateString }}
+    {% endfor %}
+{% endfor %}
+{% endif %}
+
+{% if config.postSQL %}
+    {{ stage('Post-SQL') }}
+    {{ config.postSQL }}
+{% endif %}

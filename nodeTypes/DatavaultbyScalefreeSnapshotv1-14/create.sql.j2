@@ -1,0 +1,195 @@
+{{ stage('Create Snapshot v1 View') }}
+
+{% if config.use_logarithmic_logic %}
+    {%-set log_logic = {
+    'daily':        {'duration': config.daily_snapshot_duration|int,
+                    'unit': '{{config.daily_snapshot_unit}}',
+                    'forever': '{{config.daily_snapshots_forever}}'},
+    'weekly':       {'duration': config.weekly_snapshot_duration|int,
+                    'unit': '{{config.weekly_snapshot_unit}}',
+                    'forever': '{{config.weekly_snapshots_forever}}'},
+    'monthly':      {'duration': config.monthly_snapshot_duration|int,
+                    'unit': '{{config.monthly_snapshot_unit}}',
+                    'forever': '{{config.monthly_snapshots_forever}}'},
+    'quarterly':    {'duration': config.quarterly_snapshot_duration|int,
+                    'unit': '{{config.quarterly_snapshot_unit}}',
+                    'forever': '{{config.quarterly_snapshots_forever}}'},
+    'yearly':       {'duration': config.yearly_snapshot_duration|int,
+                    'unit': '{{config.yearly_snapshot_unit}}',
+                    'forever': '{{config.yearly_snapshots_forever}}'},
+        } 
+    %}
+{% else %}
+    {% set log_logic = none %}
+{% endif %}
+
+{% set sdts_alias = datavault4coalesce.config.sdts_alias %}
+{% set ns = namespace(forever_status=FALSE) %}
+{% set snapshot_trigger_column = 'IS_ACTIVE' %}
+
+
+CREATE OR REPLACE VIEW {{ ref_no_link(node.location.name, node.name) }}
+(
+    {% for col in columns %}
+    `{{ col.name }}`
+    {%- if col.description | length > 0 %} COMMENT '{{ col.description }}'{% endif %}
+    {%- if not loop.last -%}, {% endif %}
+{% endfor %}
+)
+{%- if node.description | length > 0 %} COMMENT = '{{ node.description }}'{% endif %}
+
+AS
+WITH latest_row AS (
+
+    SELECT
+        {{ sdts_alias }}
+    FROM {{ ref(sources[0].columns[0].sourceColumns[0].node.location.name, sources[0].columns[0].sourceColumns[0].node.name) }}
+    ORDER BY {{ sdts_alias }} DESC
+    LIMIT 1
+
+), 
+
+virtual_logic AS (
+    
+    SELECT
+        c.{{ sdts_alias }},
+        c.REPLACEMENT_SDTS,
+        c.FORCE_ACTIVE,
+        {%- if log_logic is none %}
+        TRUE AS {{ snapshot_trigger_column }},
+        {%- else %}
+        CASE 
+            WHEN
+            {% if 'daily' in log_logic.keys() %}
+                {%- if log_logic['daily']['forever'] is true -%}
+                    {%- set ns.forever_status = 'TRUE' -%}
+                (1=1)
+                {%- else %}
+                    {%- set daily_duration = log_logic['daily']['duration'] -%}
+                    {%- set daily_unit = log_logic['daily']['unit'] -%}
+                    (c.{{ sdts_alias }} BETWEEN TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '{{ daily_duration }}' {{ daily_unit }}) AND CURRENT_TIMESTAMP())
+
+                {%- endif -%}   
+            {%- endif %}
+
+            {%- if 'weekly' in log_logic.keys() %} OR 
+                {%- if log_logic['weekly']['forever'] is true -%}
+                    {%- set ns.forever_status = 'TRUE' -%}
+            (c.IS_BEGINNING_OF_WEEK = TRUE)
+                {%- else %} 
+                    {%- set weekly_duration = log_logic['weekly']['duration'] -%}
+                    {%- set weekly_unit = log_logic['weekly']['unit'] %}            
+                    (c.{{ sdts_alias }} BETWEEN TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '{{ weekly_duration }}' {{ weekly_unit }}) AND CURRENT_TIMESTAMP() )
+                    AND
+                    (c.IS_BEGINNING_OF_WEEK = TRUE)
+                {%- endif -%}
+            {% endif -%}
+
+            {%- if 'monthly' in log_logic.keys() %} OR
+                {%- if log_logic['monthly']['forever'] is true -%}
+                    {%- set ns.forever_status = 'TRUE' %}
+            (c.IS_BEGINNING_OF_MONTH = TRUE)
+                {%- else %}
+                    {%- set monthly_duration = log_logic['monthly']['duration'] -%}
+                    {%- set monthly_unit = log_logic['monthly']['unit'] %}            
+                    (c.{{ sdts_alias }} BETWEEN TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '{{ monthly_duration }}' {{ monthly_unit }}) AND CURRENT_TIMESTAMP() )
+                    AND
+                    (c.IS_BEGINNING_OF_MONTH = TRUE)
+                {%- endif -%}
+            {% endif -%}
+
+            {%- if 'quarterly' in log_logic.keys() %} OR
+                {%- if log_logic['quarterly']['forever'] is true -%}
+                    {%- set ns.forever_status = 'TRUE' %}
+            (c.IS_BEGINNING_OF_QUARTER = TRUE)
+                {%- else %}
+                    {%- set quarterly_duration = log_logic['quarterly']['duration'] -%}
+                    {%- set quarterly_unit = log_logic['quarterly']['unit'] %}            
+                    (c.{{ sdts_alias }} BETWEEN TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '{{ quarterly_duration }}' {{ quarterly_unit }}) AND CURRENT_TIMESTAMP() )
+                    AND
+                    (c.IS_BEGINNING_OF_QUARTER = TRUE)
+                {%- endif -%}
+            {% endif -%}
+
+            {%- if 'yearly' in log_logic.keys() %} OR 
+                {%- if log_logic['yearly']['forever'] is true -%}
+                    {%- set ns.forever_status = 'TRUE' %}
+            (c.IS_BEGINNING_OF_YEAR = TRUE)
+                {%- else %}
+                    {%- set yearly_duration = log_logic['yearly']['duration'] -%}
+                    {%- set yearly_unit = log_logic['yearly']['unit'] %}                    
+                (c.{{ sdts_alias }} BETWEEN TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '{{ yearly_duration }}' {{ yearly_unit }}) AND CURRENT_TIMESTAMP() )
+                AND
+                (c.IS_BEGINNING_OF_YEAR = TRUE)
+                {%- endif -%}
+            {% endif %}
+            THEN TRUE
+            ELSE FALSE
+        END AS {{ snapshot_trigger_column }},
+        {%- endif %}
+
+        CASE
+            WHEN l.{{ sdts_alias }} IS NULL THEN FALSE
+            ELSE TRUE
+        END AS IS_LATEST,
+
+        c.CAPTION,
+        c.IS_HOURLY,
+        c.IS_DAILY,
+        c.IS_BEGINNING_OF_WEEK,
+        c.IS_BEGINNING_OF_MONTH,
+        c.IS_BEGINNING_OF_QUARTER,
+        c.IS_BEGINNING_OF_YEAR,
+        CASE
+            WHEN EXTRACT(YEAR FROM c.{{ sdts_alias }}) = EXTRACT(YEAR FROM CURRENT_DATE()) THEN TRUE
+            ELSE FALSE
+        END AS IS_CURRENT_YEAR,
+        CASE
+            WHEN EXTRACT(YEAR FROM c.{{ sdts_alias }}) = EXTRACT(YEAR FROM CURRENT_DATE())-1 THEN TRUE
+            ELSE FALSE
+        END AS IS_LAST_YEAR,
+        CASE
+            WHEN c.{{ sdts_alias }} BETWEEN TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '1' YEAR) AND CURRENT_TIMESTAMP() THEN TRUE
+            ELSE FALSE
+        END AS IS_ROLLING_YEAR,
+        CASE
+            WHEN c.{{ sdts_alias }} BETWEEN TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '2' YEAR) AND TRY_SUBTRACT(CURRENT_TIMESTAMP(), INTERVAL '1' YEAR) THEN TRUE
+            ELSE FALSE
+        END AS IS_LAST_ROLLING_YEAR
+    FROM {{ ref(sources[0].columns[0].sourceColumns[0].node.location.name, sources[0].columns[0].sourceColumns[0].node.name) }} c
+    LEFT JOIN latest_row l
+    ON c.{{ sdts_alias }} = l.{{ sdts_alias }}
+),
+
+active_logic_combined AS (
+
+    SELECT 
+        {{ sdts_alias }},
+        FORCE_ACTIVE,
+        REPLACEMENT_SDTS,
+        CAPTION,
+        IS_HOURLY,
+        IS_DAILY,
+        IS_BEGINNING_OF_WEEK,
+        IS_BEGINNING_OF_MONTH,
+        IS_BEGINNING_OF_QUARTER,
+        IS_BEGINNING_OF_YEAR,
+        CASE
+            WHEN FORCE_ACTIVE AND {{ snapshot_trigger_column }} THEN TRUE
+            WHEN NOT FORCE_ACTIVE OR NOT {{ snapshot_trigger_column }} THEN FALSE
+        END AS {{ snapshot_trigger_column }},
+        IS_LATEST,         
+        IS_CURRENT_YEAR,
+        IS_LAST_YEAR,
+        IS_ROLLING_YEAR,
+        IS_LAST_ROLLING_YEAR
+    FROM virtual_logic
+)
+
+SELECT
+{% for col in columns %}
+    `{{ col.name }}`
+    {%- if not loop.last -%}, {% endif %}
+{% endfor %}
+
+FROM active_logic_combined

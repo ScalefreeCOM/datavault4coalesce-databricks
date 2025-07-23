@@ -1,0 +1,217 @@
+{{ stage('Create Reference Table') }}
+
+{%- set ns = namespace(sdts_node_name='', hub_node_name='', hub_node_schema='', ref_satellites_dict=[], sdts_datatype = '') -%}
+
+{% if node.materializationType == 'table' %}
+
+    CREATE OR REPLACE TABLE {{ ref_no_link(node.location.name, node.name) }}
+    (
+    {% for col in columns %}
+        `{{ col.name }}` {{ col.dataType }}
+        {%- if not col.nullable %} NOT NULL
+        {%- if col.defaultValue | length > 0 %} DEFAULT {{ col.defaultValue }}{% endif %}
+        {% endif %}
+        {%- if col.description | length > 0 %} COMMENT '{{ col.description | escape }}'{% endif %}
+        {%- if not loop.last -%}, {% endif %}
+    {% endfor %}
+    )
+    {%- if node.description | length > 0 %} COMMENT = '{{ node.description | escape }}'{% endif %}
+
+
+{% elif node.materializationType == 'view' %}
+
+    CREATE OR REPLACE VIEW {{ ref_no_link(node.location.name, node.name) }}
+    (
+    {% for col in columns %}
+        `{{ col.name }}`
+        {%- if col.description | length > 0 %} COMMENT '{{ col.description | escape }}'{% endif %}
+        {%- if not loop.last -%},{% endif %}
+    {% endfor %}
+    )
+    {%- if node.description | length > 0 %} COMMENT = '{{ node.description | escape }}'{% endif %}
+    AS
+        
+    {%- set loc = storageLocations | selectattr('name', "eq", node.location.name) | list | first -%}
+    {%- set target_database = loc.database -%}
+    {%- set target_schema = loc.name -%}
+    {%- set target_node = node.name -%}
+
+    {# Get the snapshot node information. #}
+    {%- set snapshot_tbl = [] -%}
+
+    {%- for col in sources[0].columns -%}    
+        {%- if 'is_sdts' in col.keys() %}
+                {%- set snapshot_source_node_name = col.sourceColumns[0].node.name -%}
+                {%- set snapshot_source_node_schema = col.sourceColumns[0].node.location.name -%}
+                {%- if snapshot_source_node_name not in snapshot_tbl -%}
+                {%- set _ = snapshot_tbl.append(snapshot_source_node_name) -%}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endfor %}
+
+    {# Collect all reference satellite information. #}
+
+    {%- for col in sources[0].columns -%}
+        
+        {%- set source_node_name = col.sourceColumns[0].node.name -%}
+        {%- set source_node_schema = col.sourceColumns[0].node.location.name -%}
+
+        {%- if 'column' in col.sourceColumns[0].keys() %}
+            {%- if 'is_ref_key' not in col.sourceColumns[0].column.keys() -%}
+            {%- if source_node_name not in snapshot_tbl and source_node_name != ns.hub_node_name and source_node_name not in ns.ref_satellites_dict -%}
+                {%- set _ = ns.ref_satellites_dict.append(source_node_name) -%}
+            {%- endif -%}
+            {% else %}
+            {%- set ns.hub_node_name = source_node_name -%}
+            {%- set ns.hub_node_schema = source_node_schema -%}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endfor %}
+
+    WITH 
+
+    dates AS (
+
+    {% set historized = config.historized -%}
+
+    {% if historized in ['Full', 'Latest'] -%}
+    
+    {# This part of the code makes the macro run correctly when we dont have a Snapshot table as part of our Reference Table. The list of dates is based on all|maximum loaddates of all satellites. #}
+
+    {%- set date_column = datavault4coalesce.config.ldts_alias -%}
+    {% set clear_list = namespace(clear=False) %}
+
+    {%- for tbl in snapshot_tbl -%}
+        {%- if tbl in ns.ref_satellites_dict -%}
+        {% set clear_list = True %}
+        {%- endif -%}
+    {%- endfor -%}
+
+    {%- if clear_list -%}
+        {% set snapshot_tbl = [] %}
+    {% endif %}
+
+    {% if historized == 'Full' -%}
+        SELECT distinct {{ date_column }} FROM (
+    {% elif historized == 'Latest' -%}
+        SELECT MAX({{ date_column }}) as {{ date_column }} FROM (
+    {%- endif -%}
+
+    {% for satellite in ns.ref_satellites_dict -%}
+        SELECT  
+            {{ date_column }}
+        FROM {{ ref_no_link(node.location.name, satellite) }}
+        WHERE {{ date_column }} != {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.end_of_all_times) }}
+        {% if not loop.last -%} UNION {% endif %}
+    {%- endfor %}
+    
+    )
+
+    {% elif historized in ['Snapshot-based'] %}
+
+    {# For snapshot-based reference tables, the active snapshots determine the list of dates. #}
+
+    {%- set date_column = datavault4coalesce.config.sdts_alias -%} 
+            
+        {% for snp_tbl in snapshot_tbl -%}
+        SELECT 
+            {{ date_column }},
+            {{ datavault4coalesce.config.snapshot_trigger_column }}
+        FROM (
+            SELECT 
+            {{ datavault4coalesce.config.sdts_alias }},
+            {{ datavault4coalesce.config.snapshot_trigger_column }}
+            FROM {{ ref_no_link(node.location.name, snp_tbl) }}
+            WHERE {{ datavault4coalesce.config.snapshot_trigger_column }}
+        {%- endfor %}
+            )
+
+    {%- endif %}
+    ), 
+
+    records_to_insert AS (
+    SELECT
+
+    {% for col in sources[0].columns %}
+
+        {% if 'column' in col.sourceColumns[0].keys() -%}
+        {%- if (config.historized == 'Snapshot-based' and col.sourceColumns[0].node.name in snapshot_tbl) or (config.historized != 'Snapshot-based' and col.name == datavault4coalesce.config.ldts_alias) -%}
+
+            {# The sdts column should be selected from the 'ld' CTE. #}
+
+            {%- set source_node_name = 'ld' -%}
+            {%- set source_node_schema = col.sourceColumns[0].node.location.name -%}
+            {%- set source_column_name = col.sourceColumns[0].column.name -%}
+            {%- set target_column_name = col.name -%}
+        {% else %}
+
+            {# For all other columns, the source information can be used. #}
+
+            {%- set source_node_name = col.sourceColumns[0].node.name -%}
+            {%- set source_node_schema = col.sourceColumns[0].node.location.name -%}
+            {%- set source_column_name = col.sourceColumns[0].column.name -%}
+            {%- set target_column_name = col.name -%}
+        {% endif %}
+        
+        {%- if col.sourceColumns[0].column.is_ref_key -%}
+            {%- set ns.hub_node_name = source_node_name -%}
+            {%- set ns.hub_node_schema = source_node_schema -%}
+            COALESCE(`{{ source_node_name }}`.`{{ target_column_name }}`, {{ datavault4coalesce__unknown_key() }}) AS `{{ target_column_name }}`
+        {%- elif col.sourceColumns[0].column.is_hk -%}
+            COALESCE(`{{ source_node_name }}`.`{{ source_column_name }}`, {{ datavault4coalesce__unknown_key() }}) AS `{{ target_column_name }}`      
+        {%- elif source_column_name == datavault4coalesce.config.ldts_alias -%}
+            COALESCE(`{{ source_node_name }}`.`{{ source_column_name }}`, {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }}) AS `{{ target_column_name }}`
+        {%- elif col.name == datavault4coalesce.config.sdts_alias -%}
+            `{{ source_node_name }}`.`{{ target_column_name }}` AS `{{ target_column_name }}`
+            {%- set ns.sdts_node_name = col.sourceColumns[0].node.name -%}
+        {%- else -%}
+            `{{ source_node_name }}`.`{{ source_column_name }}` AS `{{ target_column_name }}`
+        {%- endif %}
+
+        {%- if not loop.last -%} , {% endif %}
+        {%- elif col.is_ref_key -%}
+        {{ get_source_transform(col) }} AS `{{ col.name }}`,
+        {%- endif %}
+
+    {% endfor %}
+
+    FROM {{ ref(ns.hub_node_schema, ns.hub_node_name) }} `{{ ns.hub_node_name }}`
+
+    FULL OUTER JOIN dates `ld` ON 1 = 1  
+
+    {%- set joined_tables = [] -%}
+    {%- for col in sources[0].columns %}
+        
+        {%- if 'column' in col.sourceColumns[0].keys() %}
+        {%- if 'is_ref_key' not in col.sourceColumns[0].column.keys() and not loop.first and col.sourceColumns[0].node.name not in snapshot_tbl and col.sourceColumns[0].node.name != ns.hub_node_name -%}
+                {%- set source_node_name = col.sourceColumns[0].node.name -%}
+                {%- set source_node_schema = col.sourceColumns[0].node.location.name -%}
+                {%- if source_node_name not in joined_tables -%}
+                {%- set _ = joined_tables.append(source_node_name) -%}
+                {%- set target_node = node.name -%}
+            
+                LEFT JOIN {{ ref(source_node_schema, source_node_name) }} `{{ source_node_name }}`
+                ON `ld`.`{{ date_column }}` BETWEEN `{{ source_node_name }}`.`{{ datavault4coalesce.config.ldts_alias }}` AND `{{ source_node_name }}`.`{{ datavault4coalesce.config.ledts_alias }}`
+                
+                    {%- for ref_key_col in sources[0].columns %}
+
+                    {%- if 'is_ref_key' in ref_key_col.sourceColumns[0].column.keys() and ref_key_col.sourceColumns[0].column.is_ref_key %}
+                        AND `{{ ns.hub_node_name }}`.`{{ ref_key_col.name}}` = `{{ source_node_name }}`.`{{ ref_key_col.name}}`
+                    {%- endif -%}
+                    {% endfor %}
+
+                {%- endif -%}
+            {%- endif -%} 
+        {%- endif %}
+    {% endfor -%}
+
+    {% if datavault4coalesce.config.include_business_objects_before_appearance == 'false' -%}
+        WHERE `{{ ns.hub_node_name }}`.`{{ datavault4coalesce.config.ldts_alias }}` <= `ld`.`{{ date_column }}`
+    {% endif %}
+
+    )
+
+
+    SELECT * FROM records_to_insert
+
+{% endif %}

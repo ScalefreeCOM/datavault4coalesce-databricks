@@ -1,0 +1,63 @@
+{% if config.preSQL %}
+{{ stage('Pre-SQL') }}
+{{ config.preSQL }}
+
+{% endif %}
+
+{% for source in sources %}
+            
+    {{ stage('INSERT INTO Non-Historized Satellite - ' ~ source.name) }}
+
+    {#%-- USE again when ColumnDropdownSelector is used! set link_hashkey = config.is_hk.name -%#}
+    {%- set link_hashkey = get_value_by_column_attribute("is_hk") -%}
+
+    INSERT INTO {{ ref_no_link(node.location.name, node.name) }}
+
+WITH incoming AS 
+    (
+        SELECT DISTINCT
+        {% for col in source.columns %}
+            {{ get_source_transform(col) }} AS `{{ col.name }}`
+            {%- if not loop.last -%}, {% endif %}
+        {% endfor %}
+
+        {{ source.join }}
+        
+        {% if not config.disable_hwm -%}
+        WHERE `{{ datavault4coalesce.config.ldts_alias }}` > (
+            SELECT 
+                COALESCE(MAX(`{{ datavault4coalesce.config.ldts_alias }}`),  {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }}) 
+            FROM {{ ref_no_link(node.location.name, node.name) }}
+    WHERE `{{ datavault4coalesce.config.ldts_alias }}` != {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.end_of_all_times) }}
+            )
+        {%- endif %}
+
+        {% if not config.source_is_single_batch %}
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY `{{ link_hashkey }}` ORDER BY `{{ datavault4coalesce.config.ldts_alias }}` ) = 1
+        {%- endif %}
+
+    ),
+
+new_records AS (
+    SELECT
+        `SRC`.*
+    FROM incoming `SRC`
+    WHERE NOT EXISTS (
+        SELECT
+            1
+        FROM {{ ref_no_link(node.location.name, node.name) }} `TGT`
+        WHERE `SRC`.`{{ link_hashkey }}` = `TGT`.`{{ link_hashkey }}`
+    )
+)
+
+SELECT * FROM new_records
+
+{% endfor %}
+
+{% if config.postSQL %}
+    {{ stage('Post-SQL') }}
+    {{ config.postSQL }}    
+{% endif %}
+{%- if node.override.run.enabled %}
+    {{ node.override.run.script }}
+{% endif %}

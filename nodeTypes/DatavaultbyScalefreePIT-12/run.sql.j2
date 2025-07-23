@@ -1,0 +1,161 @@
+{% if config.preSQL %}
+      {{ stage('Pre-SQL') }}
+      {{ config.preSQL }}
+    {% endif %}
+
+    {% for test in node.tests if config.testsEnabled %}
+      {% if test.runOrder == 'Before' %}
+        {{ test_stage(test.name, test.continueOnFailure) }}
+        {{ test.templateString }}
+      {% endif %}
+    {% endfor %}
+
+    {{ stage('Insert New Rows') }}
+
+    {%- set loc = storageLocations | selectattr('name', "eq", node.location.name) | list | first -%}
+    {%- set target_database = loc.database -%}
+    {%- set target_schema = loc.name -%}
+    {%- set target_node = node.name -%}
+
+    {%- set ns = namespace(sdts_node_name='', hub_node_name='', hub_node_schema='') -%}
+
+    INSERT INTO {{ ref_no_link(node.location.name, node.name) }}
+    WITH records_to_insert AS (
+      SELECT
+      {% for col in sources[0].columns %}
+
+        {% if 'column' in col.sourceColumns[0].keys() -%}
+
+          {%- set source_node_name = col.sourceColumns[0].node.name -%}
+          {%- set source_node_schema = col.sourceColumns[0].node.location.name -%}
+          {%- set source_column_name = col.sourceColumns[0].column.name -%}
+          {%- set target_column_name = col.name -%}
+
+          {%- if col.sourceColumns[0].column.is_Hub_hk  or col.sourceColumns[0].column.is_Link_hk -%}
+                    {%- set ns.hub_node_name = source_node_name -%}
+                    {%- set ns.hub_node_schema = source_node_schema -%}
+            COALESCE(`{{ source_node_name }}`.`{{ target_column_name }}`, {{ datavault4coalesce__unknown_key() }}) AS `{{ target_column_name }}`
+          {%- elif col.sourceColumns[0].column.is_hk -%}
+            COALESCE(`{{ source_node_name }}`.`{{ source_column_name }}`, {{ datavault4coalesce__unknown_key() }}) AS `{{ target_column_name }}`      
+          {%- elif source_column_name == datavault4coalesce.config.ldts_alias -%}
+            COALESCE(`{{ source_node_name }}`.`{{ source_column_name }}`, {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }}) AS `{{ target_column_name }}`
+          {%- elif col.name == datavault4coalesce.config.sdts_alias -%}
+            `{{ source_node_name }}`.`{{ target_column_name }}` AS `{{ target_column_name }}`
+
+                    {%- set ns.sdts_node_name = col.sourceColumns[0].node.name -%}
+
+          {%- else -%}
+            `{{ source_node_name }}`.`{{ source_column_name }}` AS `{{ target_column_name }}`
+          {%- endif %}
+
+        {%- if not loop.last -%} , {% endif %}
+        {%- elif col.is_dimension_key and col.hashDetails -%}
+          {# --We create a list for the columns that must be hashed with node.name and column.name #}
+          {%- set hashed_columns =[]-%}
+              {%- for hash_col in col.hashDetails.columns -%}
+                {%- set table_alias = hash_col.sourceColumns[0].node.name -%}
+                {%- set column_name = hash_col.sourceColumns[0].column.name -%}
+                {%- set _ = hashed_columns.append({
+                            "sourceColumns": hash_col.sourceColumns[0].node.name,
+                            "name": hash_col.sourceColumns[0].node.name~'.'~hash_col.sourceColumns[0].column.name
+                          }) -%}
+              {%- endfor -%}
+
+              {{ datavault4coalesce__hash(
+                    columns=hashed_columns, 
+                    is_hashdiff=false, 
+                    datatype=col.dataType, 
+                    algo=datavault4coalesce.config.hash) }} 
+                AS `{{ col.name }}`,
+        {%- endif %}
+
+        {% endfor %}
+
+      FROM {{ ref(ns.hub_node_schema, ns.hub_node_name) }} `{{ ns.hub_node_name }}`
+
+      {% for col in sources[0].columns -%}
+        {%- if col.name == datavault4coalesce.config.sdts_alias -%}
+
+                {%- set source_node_name = col.sourceColumns[0].node.name -%}
+          {%- set source_node_schema = col.sourceColumns[0].node.location.name -%}
+
+          JOIN {{ ref(source_node_schema, source_node_name) }} `{{ source_node_name }}`
+          ON `{{ source_node_name }}`.`{{ datavault4coalesce.config.snapshot_trigger_column }}` = true
+        {%- endif -%}
+      {% endfor %}
+
+      {%- for col in sources[0].columns %}
+        
+        {%- if 'column' in col.sourceColumns[0].keys() %}
+          {%- if col.sourceColumns[0].column.is_hk and not loop.first %}
+
+                    {%- set source_node_name = col.sourceColumns[0].node.name -%}
+            {%- set source_node_schema = col.sourceColumns[0].node.location.name -%}
+                    {%- set source_column_name = col.sourceColumns[0].column.name -%}
+                    {%- set target_node = node.name -%}
+
+            LEFT JOIN {{ ref(source_node_schema, source_node_name) }} `{{ source_node_name }}`
+            ON `{{ ns.hub_node_name }}`.`{{ source_column_name }}` = `{{ source_node_name }}`.`{{ source_column_name }}`
+            
+                    {% for sdts_col in sources[0].columns %}
+
+              {%- if sdts_col.name == datavault4coalesce.config.sdts_alias -%}
+                AND `{{ ns.sdts_node_name }}`.`{{ sdts_col.name}}` BETWEEN `{{ source_node_name }}`.`{{ datavault4coalesce.config.ldts_alias }}` and `{{ source_node_name }}`.`{{ datavault4coalesce.config.ledts_alias }}`
+              {%- endif -%}
+            {%- endfor -%}
+          
+          {% endif %}
+        {%- endif %}
+      {% endfor -%}
+    )
+
+    SELECT * FROM records_to_insert
+    WHERE `{{ get_value_by_column_attribute('is_dimension_key') }}` NOT IN 
+    (
+      SELECT `{{ get_value_by_column_attribute('is_dimension_key') }}` FROM 
+      {{ ref_no_link(node.location.name, node.name) }}
+    )
+
+
+    {% if config.cleanup_pit %}
+
+    {{ stage('Clean up PIT') }}
+
+      DELETE FROM {{ ref_no_link(node.location.name, node.name) }}
+      WHERE `{{ datavault4coalesce.config.sdts_alias }}` NOT IN (
+        SELECT `{{ datavault4coalesce.config.sdts_alias }}` FROM 
+        {% for col in sources[0].columns %}
+            {%- if col.name == datavault4coalesce.config.sdts_alias -%}
+                {%- set snapshot_loc = storageLocations | selectattr('name', "eq", col.sourceColumns[0].node.location.name) | list | first -%}
+                {%- set snapshot_node_name = col.sourceColumns[0].node.name -%}
+                `{{ snapshot_loc.database }}`.`{{ snapshot_loc.schema }}`.`{{ snapshot_node_name }}`
+            {%- endif -%}
+        {%- endfor %}
+        WHERE `{{ datavault4coalesce.config.snapshot_trigger_column }}` = true
+        )
+    {% endif %}
+
+    {% if config.postSQL %}
+      {{ stage('Post-SQL') }}
+      {{ config.postSQL }}
+    {% endif %}
+
+    {% if config.testsEnabled %}
+      {% for test in node.tests %}
+        {% if test.runOrder == 'After' %}
+          {{ test_stage(test.name, test.continueOnFailure) }}
+          {{ test.templateString }}
+            {% endif %}
+      {% endfor %}
+
+      {% for column in columns %}
+        {% for test in column.tests %}
+          {{ test_stage(column.name + ": " + test.name) }}
+          {{ test.templateString }}
+        {% endfor %}
+      {% endfor %}
+    {% endif %}
+
+    {% if node.override.run.enabled %}
+      {{ node.override.run.script }}
+    {% endif %}  

@@ -1,0 +1,73 @@
+fileVersion: 1
+id: "4"
+isDisabled: false
+metadata:
+  defaultStorageLocation: RAW_STAGE
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: STAGE'
+    short: DVSTG
+    plural: 'DATAVAULT BY SCALEFREE: STAGES'
+    tagColor: '#AED6F1'
+
+    config:
+    - groupName: Data Vault
+      items:
+      - type: materializationSelector
+        default: view
+        options:
+        - view
+        isRequired: true
+        enableIf: "false"
+
+      - displayName: Generate Ghost Records
+        attributeName: generate_ghost_records
+        type: toggleButton
+        default: true
+
+      - displayName: Contains Multi-active Data
+        attributeName: contains_multiactive_data
+        type: toggleButton
+        isRequired: false
+
+      - displayName: Hash Key Columns
+        type: columnSelector
+        enableIf: "{{ config.contains_multiactive_data }}"
+        attributeName: is_hk
+        isRequired: false
+
+      - displayName: Hash Difference Columns
+        type: columnSelector
+        enableIf: "{{ config.contains_multiactive_data }}"
+        attributeName: is_hd
+        isRequired: false
+
+    - groupName: Multi-Activity Config
+      enableIf: "{{ config.contains_multiactive_data }}"
+      items:
+      - displayName: Multi-active Key column
+        attributeName: multi_active_key
+        type: columnSelector
+        enableIf: "{{ config.contains_multiactive_data }}"
+        isRequired: false
+      - displayName: Main Hash Key column
+        attributeName: main_hk_col
+        type: columnDropdownSelector
+        enableIf: "{{ config.contains_multiactive_data }}"
+        isRequired: false
+
+    systemColumns:
+    - displayName: "LDTS"
+      transform: CURRENT_TIMESTAMP()
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: is_system_ldts    
+      description: "The Load Date Timestamp (LDTS) describes when this data first arrived in the Data Warehouse."
+    - displayName: "RSRC"
+      transform: "{{record_source()}}"
+      dataType: STRING
+      placement: end
+      attributeName: is_system_rsrc    
+      description: "The Record Source (RSRC) describes the source of this data."  
+name: "Datavault by Scalefree: Stage"
+type: NodeType

@@ -1,0 +1,62 @@
+{% if config.preSQL %}
+    {{ stage('Pre-SQL') }}
+    {{ config.preSQL }}
+{% endif %}
+
+
+{%- set hashkey_column = config.is_hk.name -%}
+
+{{ stage('Insert New Rows') }}
+INSERT INTO {{ ref_no_link(node.location.name, node.name) }}
+WITH distinct_concated_target AS (
+        SELECT
+        CONCAT_WS('||',
+        `{{ hashkey_column }}`,
+        `{{ datavault4coalesce.config.ldts_alias }}`,
+        `{{ datavault4coalesce.config.rsrc_alias }}`
+        ) AS `concat`
+        FROM {{ this }}
+    ),
+{% for source in sources %}
+    src_new_{{ loop.index }} AS (
+            SELECT DISTINCT
+                `{{ hashkey_column }}`,
+                `{{ datavault4coalesce.config.ldts_alias }}`,
+                `{{ datavault4coalesce.config.rsrc_alias }}`,
+            {%- for col in source.columns if col.is_stg -%}
+                {{ get_source_transform(col) }} AS `{{ col.name }}`
+            {%- endfor %}
+            {{ source.join }}
+        ),
+    {% endfor %}
+    records_to_insert AS (
+    {% for source in sources %}
+    
+    SELECT
+            `{{ hashkey_column }}`,
+            `{{ datavault4coalesce.config.ldts_alias }}`,
+            `{{ datavault4coalesce.config.rsrc_alias }}`,
+            `{{ datavault4coalesce.config.stg_alias }}`
+        FROM src_new_{{ loop.index }}
+        WHERE `{{ datavault4coalesce.config.ldts_alias }}` != {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.end_of_all_times) }}
+        AND `{{ datavault4coalesce.config.ldts_alias }}` != {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }}
+            AND CONCAT_WS('||',
+                `{{ hashkey_column }}`,
+                `{{ datavault4coalesce.config.ldts_alias }}`,
+                `{{ datavault4coalesce.config.rsrc_alias }}`
+                ) NOT IN (SELECT `concat` FROM distinct_concated_target)
+        {% if not loop.last %}UNION ALL{% endif %}
+    {% endfor %}
+        
+    )
+SELECT
+    {%- for col in columns %}
+        `{{ col.name }}`
+        {%- if not loop.last %},{% endif %}
+    {%- endfor -%}
+FROM records_to_insert
+
+{% if config.postSQL %}
+    {{ stage('Post-SQL') }}
+    {{ config.postSQL }}
+{% endif %}

@@ -1,0 +1,95 @@
+fileVersion: 1
+id: Dimension
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: Dimension
+    short: DIM
+    tagColor: '#1E339A'
+    plural: Dimensions
+
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        isRequired: true
+        default: table
+        options:
+        - table
+        - view
+
+      - type: multisourceToggle
+        enableIf: "{% if node.materializationType == 'table' %} true {% else %} false {% endif %}"
+
+      - type: businessKeyColumns
+        isRequired: true
+
+      - type: changeTrackingColumns
+        isRequired: false
+
+      - type: overrideSQLToggle
+        enableIf: "{% if node.materializationType == 'view' %} true {% else %} false {% endif %}"
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+        
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        syntax: sql
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        syntax: sql
+        isRequired: false
+
+    systemColumns:
+    - displayName: '{{NODE_NAME}}_KEY'
+      transform: ''
+      dataType: NUMBER
+      placement: beginning
+      attributeName: isSurrogateKey
+
+    - displayName: SYSTEM_VERSION
+      transform: ''
+      dataType: NUMBER
+      placement: end
+      attributeName: isSystemVersion
+
+    - displayName: SYSTEM_CURRENT_FLAG
+      transform: ''
+      dataType: VARCHAR
+      placement: end
+      attributeName: isSystemCurrentFlag
+
+    - displayName: SYSTEM_START_DATE
+      transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemStartDate
+
+    - displayName: SYSTEM_END_DATE
+      transform: CAST('2999-12-31 00:00:00' AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemEndDate
+
+    - displayName: SYSTEM_CREATE_DATE
+      transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemCreateDate
+
+    - displayName: SYSTEM_UPDATE_DATE
+      transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemUpdateDate
+name: Dimension
+type: NodeType

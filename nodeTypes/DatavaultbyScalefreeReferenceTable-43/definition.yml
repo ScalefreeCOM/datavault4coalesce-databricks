@@ -1,0 +1,51 @@
+fileVersion: 1
+id: "43"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: Reference Table'
+    short: 'REF_TBL'
+    tagColor: '#FF0090'
+    plural: 'DATAVAULT BY SCALEFREE: Reference Tables'
+
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        isRequired: true
+        default: table
+        options:
+        - table
+        - view
+
+    - groupName: Data Vault
+      items:
+      - displayName: Reference Table Key Column(s)
+        type: columnSelector
+        attributeName: is_ref_key
+        isRequired: true
+
+      - displayName: Historization
+        attributeName: historized
+        type: dropdownSelector
+        default: 'Full'
+        options:
+        - 'Full'
+        - 'Latest'
+        - 'Snapshot-based'
+      
+      - displayName: SDTS Column
+        enableIf: "{% if config.historized == 'Snapshot-based' %} true {% else %} false {% endif %}"
+        type: columnSelector
+        attributeName: is_sdts
+        isRequired: false
+        default: 'sdts'
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+name: "Datavault by Scalefree: Reference Table"
+type: NodeType

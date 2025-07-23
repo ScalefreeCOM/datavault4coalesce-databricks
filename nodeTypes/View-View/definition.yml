@@ -1,0 +1,41 @@
+fileVersion: 1
+id: View
+isDisabled: true
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |
+    capitalized: View
+    short: V
+    tagColor: '#C4C4C4'
+    isDisabled: true
+    plural: Views
+
+    config:
+      - groupName: Options
+        items: 
+        - type: materializationSelector
+          options:
+            - view
+          default: view
+          isRequired: true
+
+        - type: toggleButton
+          attributeName: selectDistinct
+          displayName: Distinct
+
+        - type: multisourceToggle
+
+        - type: overrideSQLToggle
+
+        - displayName: Multi Source Strategy
+          attributeName: insertStrategy
+          type: dropdownSelector
+          default: UNION
+          options:
+          - "UNION"
+          - "UNION ALL" 
+          isRequired: true
+          enableIf: "{% if node.isMultisource %} true {% else %} false {% endif %}"
+name: View
+type: NodeType

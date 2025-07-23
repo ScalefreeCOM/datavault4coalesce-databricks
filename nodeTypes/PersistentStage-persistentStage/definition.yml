@@ -1,0 +1,93 @@
+fileVersion: 1
+id: persistentStage
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |
+    capitalized: Persistent Stage
+    short: PSTG
+    plural: Persistent Stages
+    tagColor: '#29B2DB'
+        
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        isRequired: true
+        default: table
+        options:
+        - table
+        - view
+      
+      - type: businessKeyColumns
+        isRequired: false
+
+      - type: multisourceToggle
+        enableIf: "{% if node.materializationType == 'table' %} true {% else %} false {% endif %}"
+
+      - type: overrideSQLToggle
+        enableIf: "{% if node.materializationType == 'view' %} true {% else %} false {% endif %}"
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+        
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        syntax: sql
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        syntax: sql
+        isRequired: false
+
+    systemColumns:
+
+    - displayName: '{{NODE_NAME}}_KEY'
+      transform: ''
+      dataType: NUMBER
+      placement: beginning
+      attributeName: isSurrogateKey
+
+    - displayName: SYSTEM_VERSION
+      transform: ''
+      dataType: NUMBER
+      placement: end
+      attributeName: isSystemVersion
+
+    - displayName: SYSTEM_CURRENT_FLAG
+      transform: ''
+      dataType: VARCHAR
+      placement: end
+      attributeName: isSystemCurrentFlag
+
+    - displayName: SYSTEM_START_DATE
+      transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemStartDate
+
+    - displayName: SYSTEM_END_DATE
+      transform: CAST('2999-12-31 00:00:00' AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemEndDate
+
+    - displayName: SYSTEM_CREATE_DATE
+      transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemCreateDate
+
+    - displayName: SYSTEM_UPDATE_DATE
+      transform: CAST(CURRENT_TIMESTAMP AS TIMESTAMP)
+      dataType: TIMESTAMP
+      placement: end
+      attributeName: isSystemUpdateDate
+name: Persistent Stage
+type: NodeType

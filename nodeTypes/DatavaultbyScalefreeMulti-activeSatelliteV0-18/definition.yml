@@ -1,0 +1,43 @@
+fileVersion: 1
+id: "18"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: MULTI-ACTIVE SATELLITE V0'
+    short: 'SATMV0'
+    plural: 'DATAVAULT BY SCALEFREE: MULTI-ACTIVE SATELLITES V0'
+    tagColor: '#dfdf1f'
+
+    config:
+    - groupName: Data Vault
+      items:
+      - displayName: Hashkey Column
+        type: columnSelector
+        attributeName: is_hk
+        isRequired: true
+      
+      - displayName: Multi-Active Key Column
+        type: columnSelector
+        attributeName: is_ma_key
+        isRequired: true
+
+      - displayName: Hashdiff Column
+        type: columnSelector
+        attributeName: is_hd
+        isRequired: true
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+name: "Datavault by Scalefree: Multi-active Satellite V0"
+type: NodeType

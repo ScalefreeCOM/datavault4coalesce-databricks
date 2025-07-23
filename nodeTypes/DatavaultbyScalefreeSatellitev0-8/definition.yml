@@ -1,0 +1,50 @@
+fileVersion: 1
+id: "8"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: SATELLITE V0'
+    short: 'SATV0'
+    plural: 'DATAVAULT BY SCALEFREE: SATELLITES V0'
+    tagColor: 'Yellow'
+
+
+    config:
+    - groupName: Data Vault
+      items:
+      - displayName: Hashkey Column
+        type: columnSelector
+        attributeName: is_hk
+        isRequired: true
+
+      - displayName: Hashdiff Column
+        type: columnSelector
+        attributeName: is_hd
+        isRequired: true
+
+      - displayName: Disable High-Water-Mark?
+        type: toggleButton
+        isRequired: true
+        attributeName: disable_hwm   
+        default: false    
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+name: "Datavault by Scalefree: Satellite v0"
+type: NodeType

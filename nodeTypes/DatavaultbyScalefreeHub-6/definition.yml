@@ -1,0 +1,63 @@
+fileVersion: 1
+id: "6"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: HUB'
+    short: 'HUB'
+    tagColor: blue
+    plural: 'DATAVAULT BY SCALEFREE: HUBS'
+
+    config:
+    - groupName: Options
+      items:
+      - type: materializationSelector
+        isRequired: true
+        enableIf: 'true'
+        options: 
+        - table
+        default: table
+     
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+
+      - type: multisourceToggle
+
+    - groupName: Data Vault
+      items:
+
+      - displayName: Hub Hash Key column
+        type: columnSelector
+        attributeName: is_Hub_hk
+        isRequired: true
+        enableIf: 'true'
+        
+      - displayName: Hub LoadDateTimestamp Column
+        enableIf: 'false'
+        type: columnSelector
+        attributeName: is_Hub_ldts
+        isRequired: false
+
+      - displayName: Disable High-Water-Mark?
+        type: toggleButton
+        isRequired: false
+        enableIf: 'false'
+        attributeName: disable_hwm   
+        default: true
+        
+name: "Datavault by Scalefree: Hub"
+type: NodeType

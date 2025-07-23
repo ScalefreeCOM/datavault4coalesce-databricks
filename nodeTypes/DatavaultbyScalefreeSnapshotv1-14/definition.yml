@@ -1,0 +1,230 @@
+fileVersion: 1
+id: "14"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: SNAPSHOT V1'
+    short: 'SNAPSHOTV1'
+    plural: 'DATAVAULT BY SCALEFREE: SNAPSHOTS V1'
+    tagColor: '#58D68D'
+
+    config:
+
+    - groupName: Use Logarithmic Logic
+      items:
+      - displayName: Use Logarithmic Logic
+        type: toggleButton
+        attributeName: use_logarithmic_logic
+        enableIf: 'true'
+        isRequired: true
+        default: true
+      - type: materializationSelector
+        default: view
+        options:
+        - view
+        isRequired: true
+        enableIf: "false"   
+
+    - groupName: Daily Snapshot Logic
+      enableIf: "{{ config.use_logarithmic_logic }}"
+      items:
+      - displayName: Keep Daily Snapshots forever
+        type: toggleButton
+        attributeName: daily_snapshots_forever
+        enableIf: "{{ config.use_logarithmic_logic }}"
+        isRequired: true
+        default: false
+
+      - displayName: Duration
+        type: textBox
+        attributeName: daily_snapshot_duration
+        enableIf: "{% if not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: "30"
+
+      - displayName: Time Unit
+        type: dropdownSelector
+        attributeName: daily_snapshot_unit
+        enableIf: "{% if not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: DAY
+        options:
+        - DAY
+        - WEEK
+        - MONTH
+        - QUARTER
+        - YEAR
+        
+    - groupName: Weekly Snapshot Logic
+      enableIf: "{% if config.use_logarithmic_logic and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+      items:
+      - displayName: Keep Weekly Snapshots forever
+        type: toggleButton
+        attributeName: weekly_snapshots_forever
+        enableIf: "{% if config.use_logarithmic_logic and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: false
+
+      - displayName: Duration
+        type: textBox
+        attributeName: weekly_snapshot_duration
+        enableIf: "{% if not config.weekly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: "1"
+
+      - displayName: Time Unit
+        type: dropdownSelector
+        attributeName: weekly_snapshot_unit
+        enableIf: "{% if not config.weekly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}" 
+        isRequired: true
+        default: "YEAR"
+        options:
+        - DAY
+        - WEEK
+        - MONTH
+        - QUARTER
+        - YEAR   
+
+    - groupName: Monthly Snapshot Logic
+      enableIf: "{% if config.use_logarithmic_logic and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+      items:
+      - displayName: Keep Monthly Snapshots forever
+        type: toggleButton
+        attributeName: monthly_snapshots_forever
+        enableIf: "{% if config.use_logarithmic_logic and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: false
+
+      - displayName: Duration
+        type: textBox
+        attributeName: monthly_snapshot_duration
+        enableIf: "{% if not config.monthly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: "3"
+
+      - displayName: Time Unit
+        type: dropdownSelector
+        attributeName: monthly_snapshot_unit
+        enableIf: "{% if not config.monthly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: YEAR
+        options:
+        - DAY
+        - WEEK
+        - MONTH
+        - QUARTER
+        - YEAR
+
+    - groupName: Quarterly Snapshot Logic
+      enableIf: "{% if config.use_logarithmic_logic and not config.daily_snapshots_forever and not config.monthly_snapshots_forever %} true {% else %} false {% endif %}"
+      items:
+      - displayName: Keep Quarterly Snapshots forever
+        type: toggleButton
+        attributeName: quarterly_snapshots_forever
+        enableIf: "{% if config.use_logarithmic_logic and not config.daily_snapshots_forever and not config.monthly_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: false
+
+      - displayName: Duration
+        type: textBox
+        attributeName: quarterly_snapshot_duration
+        enableIf: "{% if not config.quarterly_snapshots_forever and not config.daily_snapshots_forever and not config.monthly_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: "5"
+
+      - displayName: Time Unit
+        type: dropdownSelector
+        attributeName: quarterly_snapshot_unit
+        enableIf: "{% if not config.quarterly_snapshots_forever and not config.daily_snapshots_forever and not config.monthly_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: YEAR
+        options:
+        - DAY
+        - WEEK
+        - MONTH
+        - QUARTER
+        - YEAR
+        
+    - groupName: Yearly Snapshot Logic
+      enableIf: "{% if config.use_logarithmic_logic and not config.quarterly_snapshots_forever and not config.monthly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+      items:
+      - displayName: Keep Yearly Snapshots forever
+        type: toggleButton
+        attributeName: yearly_snapshots_forever
+        enableIf: "{% if config.use_logarithmic_logic and not config.quarterly_snapshots_forever and not config.monthly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: false
+
+      - displayName: Duration
+        type: textBox
+        attributeName: yearly_snapshot_duration
+        enableIf: "{% if not config.yearly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}"
+        isRequired: true
+        default: "10"
+
+      - displayName: Time Unit
+        type: dropdownSelector
+        attributeName: yearly_snapshot_unit
+        enableIf: "{% if not config.yearly_snapshots_forever and not config.daily_snapshots_forever %} true {% else %} false {% endif %}" 
+        isRequired: true
+        default: YEAR
+        options:
+        - DAY
+        - WEEK
+        - MONTH
+        - QUARTER
+        - YEAR  
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+
+    systemColumns:
+    - displayName: IS_ACTIVE
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_active
+
+    - displayName: IS_LATEST
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_latest
+
+    - displayName: IS_CURRENT_YEAR
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_current_year
+
+    - displayName: IS_LAST_YEAR
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_last_year
+
+    - displayName: IS_ROLLING_YEAR
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_rolling_year
+
+    - displayName: IS_LAST_ROLLING_YEAR
+      transform: ""
+      dataType: BOOLEAN
+      placement: end
+      attributeName: system_is_last_rolling_year
+name: "Datavault by Scalefree: Snapshot v1"
+type: NodeType

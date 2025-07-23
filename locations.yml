@@ -1,0 +1,7 @@
+defaultStorageMapping: CORE
+fileVersion: 1
+locations:
+  - CORE
+  - EXTERNAL_TABLES
+  - RAW_STAGE
+  - TPCH_SF1

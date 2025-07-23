@@ -1,0 +1,58 @@
+fileVersion: 1
+id: "44"
+isDisabled: false
+metadata:
+  defaultStorageLocation: null
+  error: null
+  nodeMetadataSpec: |-
+    capitalized: 'DATAVAULT BY SCALEFREE: EFFECTIVITY SATELLITE V0'
+    short: 'EFF_SATV0'
+    plural: 'DATAVAULT BY SCALEFREE: EFFECTIVITY SATELLITES V0'
+    tagColor: 'Yellow'
+
+
+    config:
+    - groupName: Data Vault
+      items:
+      - displayName: Tracked HashKey
+        type: columnSelector
+        attributeName: tracked_hashkey
+        isRequired: true
+
+      - displayName: Disable High-Water-Mark?
+        type: toggleButton
+        isRequired: true
+        attributeName: disable_hwm   
+        default: false  
+
+      - displayName: Source Data is Single Batch
+        type: toggleButton
+        isRequired: true
+        attributeName: source_is_single_batch   
+        default: true 
+
+      - displayName: Enable Tests
+        attributeName: testsEnabled
+        type: toggleButton
+        default: true
+
+    - groupName: Pre/Post SQL
+      items:
+      - displayName: Pre-SQL
+        attributeName: preSQL
+        type: textBox
+        isRequired: false
+
+      - displayName: Post-SQL
+        attributeName: postSQL
+        type: textBox
+        isRequired: false
+
+    systemColumns:
+      - displayName: "IS_ACTIVE"
+        transform: ""
+        dataType: BOOLEAN
+        placement: end
+        attributeName: is_active
+name: "Datavault by Scalefree: Effectivity Satellite V0"
+type: NodeType

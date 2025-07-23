@@ -1,0 +1,102 @@
+{% if config.preSQL %}
+    {{ stage('Pre-SQL') }}
+    {{ config.preSQL }}
+{% endif %}
+
+{% for test in node.tests if config.testsEnabled %}
+    {% if test.runOrder == 'Before' %}
+    {{ test_stage(test.name, test.continueOnFailure) }}
+    {{ test.templateString }}
+    {% endif %}
+{% endfor %}
+
+{% for source in sources %}
+
+    {{ stage('INSERT INTO Reference Hub - ' ~ source.name) }}
+    
+    {%- set refkey_column = get_value_by_column_attribute("is_ref_key") -%}
+    
+    {#-- enable when ColumnDropDownSelector is used again
+    {%- if 'is_ref_key' not in config.keys() -%}
+
+    {%- else -%}
+    
+    {%- set refkey_column = config.is_ref_key.name -%}
+    
+    {%- endif -%}
+    #}
+
+    INSERT INTO {{ ref_no_link(node.location.name, node.name) }}
+    
+WITH
+
+{# Get all incoming data. It is optional to disable the HWM config. #}
+incoming AS (
+
+    SELECT DISTINCT
+    {% for col in source.columns %}
+    {{ get_source_transform(col) }} AS `{{ col.name }}`
+    {%- if not loop.last -%}, {% endif %}
+    {% endfor %}
+
+    {{ source.join }}
+
+    {% if not config.disable_hwm -%}
+    WHERE `{{ datavault4coalesce.config.ldts_alias }}` > (
+        SELECT 
+            COALESCE(MAX(`{{ datavault4coalesce.config.ldts_alias }}`),  {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }})
+        FROM {{ ref_no_link(node.location.name, node.name) }}
+    WHERE `{{ datavault4coalesce.config.ldts_alias }}` != {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.end_of_all_times) }}
+        )
+    {%- endif %}  
+
+), 
+
+{# Get all target ref_keys out of the existing ref_table for later incremental logic. #}
+distinct_target_ref_keys AS (
+
+    SELECT
+    
+    {{ refkey_column }}
+
+    FROM {{ ref_no_link(node.location.name, node.name) }}
+
+), 
+
+new_records AS (
+
+    SELECT 
+    `SRC`.* 
+    FROM incoming `SRC`
+    WHERE
+    {{ refkey_column }} NOT IN 
+    (
+        SELECT {{ refkey_column }} FROM distinct_target_ref_keys
+    )
+)
+
+
+    SELECT * FROM new_records
+
+{% endfor %}
+
+{% if config.postSQL %}
+    {{ stage('Post-SQL') }}
+    {{ config.postSQL }}
+{% endif %}
+
+{% if config.testsEnabled %}
+    {% for test in node.tests %}
+    {% if test.runOrder == 'After' %}
+        {{ test_stage(test.name, test.continueOnFailure) }}
+        {{ test.templateString }}
+        {% endif %}
+    {% endfor %}
+
+    {% for column in columns %}
+    {% for test in column.tests %}
+        {{ test_stage(column.name + ": " + test.name) }}
+        {{ test.templateString }}
+    {% endfor %}
+    {% endfor %}
+{% endif %}

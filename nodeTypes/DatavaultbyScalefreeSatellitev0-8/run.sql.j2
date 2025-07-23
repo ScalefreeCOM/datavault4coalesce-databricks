@@ -1,0 +1,113 @@
+{% if config.preSQL %}
+    {{ stage('Pre-SQL') }}
+    {{ config.preSQL }}
+{% endif %}
+
+{% for test in node.tests if config.testsEnabled %}
+    {% if test.runOrder == 'Before' %}
+    {{ test_stage(test.name, test.continueOnFailure) }}
+    {{ test.templateString }}
+    {% endif %}
+{% endfor %}
+
+{{ stage('Insert New Rows') }}
+INSERT INTO {{ ref_no_link(node.location.name, node.name) }}
+
+WITH latest_entries_in_sat AS (
+
+    {#/* USE THIS again when ColumnDropdownSelector is used!
+    {%- set hashkey_column = config.is_hk.name -%}
+    {%- set hashdiff_column = config.is_hd.name -%}
+    */#}
+
+    {%- set hashkey_column = get_value_by_column_attribute("is_hk") -%}
+    {%- set hashdiff_column = get_value_by_column_attribute("is_hd") -%}
+
+    /* get current rows from satellite */
+    SELECT 
+    `{{ hashkey_column }}`,
+    `{{ hashdiff_column }}`
+    FROM {{ ref_no_link(node.location.name, node.name) }} 
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY `{{ hashkey_column }}` ORDER BY `{{ datavault4coalesce.config.ldts_alias }}` DESC) = 1
+
+
+),
+
+deduplicated_numbered_source AS (
+    
+    {% for source in sources %}
+
+        SELECT
+    {% for col in source.columns %}
+        {{ get_source_transform(col) }} AS {{ col.name }},
+    {% endfor %}
+
+        ROW_NUMBER() OVER(PARTITION BY `{{ hashkey_column }}` ORDER BY `{{ datavault4coalesce.config.ldts_alias }}`) as rn
+
+        
+        {{ source.join }}
+
+
+    {% if not config.disable_hwm -%}
+    WHERE `{{ datavault4coalesce.config.ldts_alias }}` > (
+        SELECT 
+        COALESCE(MAX(`{{ datavault4coalesce.config.ldts_alias }}`),  {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.beginning_of_all_times) }})
+        FROM {{ ref_no_link(node.location.name, node.name) }}
+        WHERE `{{ datavault4coalesce.config.ldts_alias }}` != {{ datavault4coalesce__string_to_timestamp(datavault4coalesce.config.timestamp_format, datavault4coalesce.config.end_of_all_times) }}
+        )
+    {%- endif %}  
+
+        QUALIFY
+        CASE
+            WHEN `{{ hashdiff_column }}` = LAG(`{{ hashdiff_column }}`) OVER(PARTITION BY `{{ hashkey_column }}` ORDER BY `{{ datavault4coalesce.config.ldts_alias }}` ) THEN FALSE
+            ELSE TRUE
+        END
+
+    {% endfor %}
+
+)
+
+    {% for source in sources %}
+    SELECT DISTINCT
+    {% for col in source.columns %}
+        {{ col.name }}
+        {%- if not loop.last -%}, {% endif %}
+    {% endfor %}
+
+    FROM deduplicated_numbered_source
+    WHERE NOT EXISTS (
+    SELECT 1 FROM latest_entries_in_sat
+    WHERE 
+        deduplicated_numbered_source.`{{ hashdiff_column }}` = latest_entries_in_sat.`{{ hashdiff_column }}`
+    AND deduplicated_numbered_source.`{{ hashkey_column }}` = latest_entries_in_sat.`{{ hashkey_column }}`
+
+        AND deduplicated_numbered_source.rn = 1
+    )
+
+    {% endfor %}
+
+{% if config.postSQL %}
+    {{ stage('Post-SQL') }}
+    {{ config.postSQL }}
+{% endif %}
+
+{% if config.testsEnabled %}
+    {% for test in node.tests %}
+    {% if test.runOrder == 'After' %}
+        {{ test_stage(test.name, test.continueOnFailure) }}
+        {{ test.templateString }}
+        {% endif %}
+    {% endfor %}
+
+    {% for column in columns %}
+    {% for test in column.tests %}
+        {{ test_stage(column.name + ": " + test.name) }}
+        {{ test.templateString }}
+    {% endfor %}
+    {% endfor %}
+{% endif %}
+
+{% if config.postSQL %}
+    {{ stage('Post-SQL') }}
+    {{ config.postSQL }}
+{% endif %}

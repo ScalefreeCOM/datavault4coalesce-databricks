@@ -1,14 +1,13 @@
-{{ stage('Run Snapshot v0') }}
 {% for test in node.tests if config.testsEnabled %}
-    {% if test.runOrder == 'Before' %}
-        {{ test_stage(test.name, test.continueOnFailure) }}
-        {{ test.templateString }}
-    {% endif %}
+  {% if test.runOrder == 'Before' %}
+    {{ test_stage(test.name, test.continueOnFailure) }}
+    {{ test.templateString }}
+  {% endif %}
 {% endfor %}
 
 {% if config.preSQL %}
-    {{ stage('Pre-SQL') }}
-    {{ config.preSQL }}
+  {{ stage('Pre-SQL') }}
+  {{ config.preSQL }}
 {% endif %}
 
 {{ stage('Insert New Rows') }}
@@ -78,22 +77,22 @@ FROM enriched_timestamps
 {%- if node.description | length > 0 %} COMMENT = '{{ node.description }}'{% endif %}
 
 {% if config.testsEnabled %}
-{% for test in node.tests %}
+  {% for test in node.tests %}
     {% if test.runOrder == 'After' %}
-    {{ test_stage(test.name, test.continueOnFailure) }}
-    {{ test.templateString }}
+      {{ test_stage(test.name, test.continueOnFailure) }}
+      {{ test.templateString }}
         {% endif %}
-{% endfor %}
+  {% endfor %}
 
-{% for column in columns %}
+  {% for column in columns %}
     {% for test in column.tests %}
-    {{ test_stage(column.name + ": " + test.name) }}
-    {{ test.templateString }}
+      {{ test_stage(column.name + ": " + test.name) }}
+      {{ test.templateString }}
     {% endfor %}
-{% endfor %}
+  {% endfor %}
 {% endif %}
 
 {% if config.postSQL %}
-    {{ stage('Post-SQL') }}
-    {{ config.postSQL }}
+  {{ stage('Post-SQL') }}
+  {{ config.postSQL }}
 {% endif %}

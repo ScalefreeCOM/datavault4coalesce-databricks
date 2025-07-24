@@ -58,6 +58,3 @@ SELECT * FROM new_records
     {{ stage('Post-SQL') }}
     {{ config.postSQL }}    
 {% endif %}
-{%- if node.override.run.enabled %}
-    {{ node.override.run.script }}
-{% endif %}

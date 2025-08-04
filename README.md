@@ -1,6 +1,6 @@
 <h1 align=center>Welcome to datavault4coalesce!</h1>
 
-<h2 align=center>This is the Databricks version of Datavault4Coalesce. If you are looking for the Snowflake version, visit [here](https://github.com/ScalefreeCOM/datavault4coalesce)!</h2>
+<h2 align=center>This is the Databricks version of Datavault4Coalesce. If you are looking for the Snowflake version, visit <a href="https://github.com/ScalefreeCOM/datavault4coalesce">here</a>!</h2>
 
 <img width=80% alt="dataVault4coalesce_logo" src="https://github.com/ScalefreeCOM/datavault4coalesce/assets/81677440/6e6b129a-98cc-49b0-aaff-c6af2e6ef411" align=center>
 

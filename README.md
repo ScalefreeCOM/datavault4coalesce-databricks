@@ -1,5 +1,7 @@
 <h1 align=center>Welcome to datavault4coalesce!</h1>
 
+<h2 align=center>This is the Databricks version of Datavault4Coalesce. If you are looking for the Snowflake version, visit [here](https://github.com/ScalefreeCOM/datavault4coalesce)!</h2>
+
 <img width=80% alt="dataVault4coalesce_logo" src="https://github.com/ScalefreeCOM/datavault4coalesce/assets/81677440/6e6b129a-98cc-49b0-aaff-c6af2e6ef411" align=center>
 
 ***
@@ -26,7 +28,7 @@ With datavault4coalesce you will get a lot of awesome features, including:
 ### Requirements
 
 To use the node types efficiently, there are a few prerequisites you need to provide:
-- Coalesce Environment connected to a Snowflake Instance
+- Coalesce Environment connected to a Databricks Instance
 - Basic Data Vault Knowledge (If this is new to you, check the following [Article](https://www.scalefree.com/what-is-data-vault/))
 
 ### Installation

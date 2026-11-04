@@ -15,7 +15,7 @@
         {%- if not loop.last -%}, {% endif %}
     {% endfor %}
     )
-    {%- if node.description | length > 0 %} COMMENT = '{{ node.description | escape }}'{% endif %}
+    {%- if node.description | length > 0 %} COMMENT '{{ node.description | escape }}'{% endif %}
 
 
 {% elif node.materializationType == 'view' %}
@@ -28,7 +28,7 @@
         {%- if not loop.last -%},{% endif %}
     {% endfor %}
     )
-    {%- if node.description | length > 0 %} COMMENT = '{{ node.description | escape }}'{% endif %}
+    {%- if node.description | length > 0 %} COMMENT '{{ node.description | escape }}'{% endif %}
     AS
         
     {%- set loc = storageLocations | selectattr('name', "eq", node.location.name) | list | first -%}

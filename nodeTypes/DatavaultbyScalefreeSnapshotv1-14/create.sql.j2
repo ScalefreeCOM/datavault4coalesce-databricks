@@ -36,7 +36,7 @@ CREATE OR REPLACE VIEW {{ ref_no_link(node.location.name, node.name) }}
     {%- if not loop.last -%}, {% endif %}
 {% endfor %}
 )
-{%- if node.description | length > 0 %} COMMENT = '{{ node.description }}'{% endif %}
+{%- if node.description | length > 0 %} COMMENT '{{ node.description }}'{% endif %}
 
 AS
 WITH latest_row AS (

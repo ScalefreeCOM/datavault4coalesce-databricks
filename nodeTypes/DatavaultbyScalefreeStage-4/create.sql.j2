@@ -22,7 +22,7 @@
         {% endfor %}
 
     )
-    {%- if node.description | length > 0 %} COMMENT = '{{ node.description }}'{% endif %}
+    {%- if node.description | length > 0 %} COMMENT '{{ node.description }}'{% endif %}
     AS WITH 
     
     

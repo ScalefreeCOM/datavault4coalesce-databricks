@@ -12,7 +12,7 @@
             {%- if not loop.last -%}, {% endif %}
         {% endfor %}
     )
-    {%- if node.description | length > 0 %} COMMENT = '{{ node.description | escape }}'{% endif %}
+    {%- if node.description | length > 0 %} COMMENT '{{ node.description | escape }}'{% endif %}
     AS
     {% for source in sources %}
         SELECT {% if config.selectDistinct %} DISTINCT {% endif %}

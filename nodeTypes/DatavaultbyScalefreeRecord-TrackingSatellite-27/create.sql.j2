@@ -12,3 +12,4 @@ CREATE OR REPLACE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {% endfor %}
 )
 {%- if node.description | length > 0 %} COMMENT '{{ node.description }}'{% endif %}
+TBLPROPERTIES ('delta.columnMapping.mode' = 'name')

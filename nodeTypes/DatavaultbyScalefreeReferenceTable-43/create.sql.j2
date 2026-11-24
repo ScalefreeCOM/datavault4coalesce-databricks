@@ -16,6 +16,7 @@
     {% endfor %}
     )
     {%- if node.description | length > 0 %} COMMENT '{{ node.description | escape }}'{% endif %}
+    TBLPROPERTIES ('delta.columnMapping.mode' = 'name')
 
 
 {% elif node.materializationType == 'view' %}

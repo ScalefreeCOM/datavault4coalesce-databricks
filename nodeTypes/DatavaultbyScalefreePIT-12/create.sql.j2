@@ -9,9 +9,9 @@ CREATE OR REPLACE TABLE {{ ref_no_link(node.location.name, node.name) }}
     {%- if not col.nullable %} NOT NULL
         {%- if col.defaultValue | length > 0 %} DEFAULT {{ col.defaultValue }}{% endif %}
     {% endif %}
-    {%- if col.description | length > 0 %} COMMENT '{{ col.description }}'{% endif %}
+    {%- if col.description | length > 0 %} COMMENT '{{ col.description | escape }}'{% endif %}
     {%- if not loop.last -%}, {% endif %}
     {% endfor %}
 )
-{%- if node.description | length > 0 %} COMMENT '{{ node.description }}'{% endif %}
+{%- if node.description | length > 0 %} COMMENT '{{ node.description | escape }}'{% endif %}
 TBLPROPERTIES ('delta.columnMapping.mode' = 'name')
